@@ -1,7 +1,7 @@
 // --- CREDENCIALES DE ACCESO FIJAS ---
 const CREDENCIALES_PERMITIDAS = {
-    usuario: "papeleria123",
-    clave: "admin2026"
+    usuario: "AnaR",
+    clave: "MailyR"
 };
 
 // URL de tu API en SheetDB
