@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayanyalen ventas e inventarios</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="icon" type="image/png" href="favicon.jpg">
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal flex flex-col min-h-screen">
+
+   
+    <div id="pantalla-login" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-96">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">Acceso al Sistema</h2>
+            <p class="text-xs text-gray-500 text-center mb-6">Ingresa las credenciales provistas por el administrador.</p>
+            <form id="form-login" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600">Usuario</label>
+                    <input type="text" id="login-usuario" required class="w-full mt-1 p-2 border rounded focus:ring focus:ring-blue-200">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600">Contraseña</label>
+                    <input type="password" id="login-clave" required class="w-full mt-1 p-2 border rounded focus:ring focus:ring-blue-200">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 font-medium transition">Entrar al Sistema</button>
+                <p id="login-error" class="text-red-500 text-xs text-center hidden">Usuario o contraseña incorrectos.</p>
+            </form>
+        </div>
+    </div>
+
+   
+    <div id="app-principal" class="hidden flex flex-col min-h-screen">
+        
+        <!-- Banner Superior (Navbar Azul Uniforme) -->
+        <header class="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-900 text-white shadow-lg py-5 px-6">
+            <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-extrabold tracking-wide">Dayanyalen</h1>
+                    <p class="text-xs md:text-sm text-blue-100 mt-1">Sistema Integral de Ventas, Inventario, Servicios y Finanzas</p>
+                </div>
+                <div class="flex items-center space-x-4 bg-blue-950 bg-opacity-40 py-2 px-4 rounded-lg">
+                    <span id="fecha-hoy" class="text-sm font-medium"></span>
+                    <button onclick="cerrarSesion()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs transition font-semibold">Cerrar Sesión</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow mt-2">
+            
+            
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Pestañas de Venta y Pagos -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex justify-between items-center mb-4 border-b pb-3 flex-wrap gap-2">
+                        <div class="flex space-x-2">
+                            <button onclick="cambiarModoPOS('producto')" id="tab-prod-btn" class="px-3 py-2 text-xs md:text-sm font-bold rounded-lg bg-blue-600 text-white transition">📦 Productos</button>
+                            <button onclick="cambiarModoPOS('servicio')" id="tab-serv-btn" class="px-3 py-2 text-xs md:text-sm font-bold rounded-lg bg-gray-200 text-gray-700 transition">🖨️ Servicios</button>
+                            <button onclick="cambiarModoPOS('gasto')" id="tab-gasto-btn" class="px-3 py-2 text-xs md:text-sm font-bold rounded-lg bg-gray-200 text-gray-700 transition">💸 Registrar Pago/Gasto</button>
+                        </div>
+                        <button onclick="togglePanelInventario()" id="btn-toggle-inventario" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition font-medium border">
+                            ⚙️ Inventario
+                        </button>
+                    </div>
+
+                    
+                    <form id="form-venta-producto" class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <label class="block text-sm font-medium text-gray-700">Buscar Producto en Inventario</label>
+                            <label class="text-xs text-blue-600 font-semibold cursor-pointer flex items-center gap-1">
+                                <input type="checkbox" id="check-venta-libre" onchange="toggleVentaLibre()" class="rounded text-blue-600">
+                                ⚡ ¿Producto no registrado? (Venta libre)
+                            </label>
+                        </div>
+
+                        <div id="seccion-busqueda-inventario">
+                            <input type="text" id="input-buscador-prod" list="lista-productos-sugeridos" placeholder="Escribe para buscar producto (ej. Lápiz, Cuaderno)..." required class="w-full mt-1 p-3 border rounded-lg focus:ring focus:ring-blue-200 text-base">
+                            <datalist id="lista-productos-sugeridos">
+                              
+                            </datalist>
+                            <input type="hidden" id="venta-producto-id">
+                        </div>
+
+                        <div id="seccion-venta-libre-prod" class="grid grid-cols-1 sm:grid-cols-2 gap-4 hidden">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Descripción del Producto</label>
+                                <input type="text" id="libre-prod-nombre" placeholder="Ej. Borrador genérico suelto" class="w-full mt-1 p-3 border rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Precio Total Cobrado ($)</label>
+                                <input type="number" step="any" id="libre-prod-precio" placeholder="Ej. 1500" class="w-full mt-1 p-3 border rounded-lg">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div id="contenedor-cantidad-prod">
+                                <label class="block text-sm font-medium text-gray-700">Cantidad</label>
+                                <input type="number" id="venta-cantidad" value="1" min="1" required class="w-full mt-1 p-3 border rounded-lg">
+                            </div>
+                            <div class="flex items-end">
+                                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-lg font-bold shadow transition">Registrar Venta</button>
+                            </div>
+                        </div>
+                    </form>
+
+                
+                    <form id="form-venta-servicio" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Tipo de Servicio</label>
+                            <select id="servicio-tipo" required class="w-full mt-1 p-3 border rounded-lg focus:ring focus:ring-blue-200 text-base" onchange="manejarCambioServicio()">
+                                <option value="">-- Elige un servicio --</option>
+                                <option value="fijo" data-nombre="Fotocopia B/N" data-precio="200" data-costo="50">Fotocopia B/N ($200 c/u)</option>
+                                <option value="fijo" data-nombre="Fotocopia Color" data-precio="600" data-costo="200">Fotocopia Color ($600 c/u)</option>
+                                <option value="fijo" data-nombre="Impresión B/N" data-precio="500" data-costo="150">Impresión B/N ($500 c/u)</option>
+                                <option value="libre" data-nombre="Laminación / Plastificado">Laminación / Plastificado (Precio Variable)</option>
+                                <option value="libre" data-nombre="Redacción / Elaboración de Documento o Carta">Redacción de Documentos / Cartas (Precio Variable)</option>
+                                <option value="libre" data-nombre="Otro Servicio / Trabajo Personalizado">Otro Servicio Personalizado</option>
+                            </select>
+                        </div>
+
+                        <div id="seccion-servicio-fijo" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Cantidad / Páginas</label>
+                                <input type="number" id="servicio-cantidad" value="1" min="1" class="w-full mt-1 p-3 border rounded-lg">
+                            </div>
+                            <div class="flex items-end">
+                                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-bold shadow transition">Registrar Servicio</button>
+                            </div>
+                        </div>
+
+                        <div id="seccion-servicio-libre" class="grid grid-cols-1 sm:grid-cols-2 gap-4 hidden">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">¿Cuánto se cobró en total? ($)</label>
+                                <input type="number" step="any" id="servicio-precio-total" placeholder="Ej. 3000" class="w-full mt-1 p-3 border rounded-lg">
+                            </div>
+                            <div class="flex items-end">
+                                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg font-bold shadow transition">Registrar Servicio</button>
+                            </div>
+                        </div>
+                    </form>
+
+                   
+                    <form id="form-gasto" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Descripción del Gasto o Pago</label>
+                            <input type="text" id="gasto-descripcion" placeholder="Ej. Pago a proveedor de esferos, Compra de papel" required class="w-full mt-1 p-3 border rounded-lg">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Monto Pagado ($)</label>
+                                <input type="number" step="any" id="gasto-monto" placeholder="Ej. 50000" required class="w-full mt-1 p-3 border rounded-lg">
+                            </div>
+                            <div class="flex items-end">
+                                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white p-3 rounded-lg font-bold shadow transition">Registrar Salida de Dinero</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+            
+                <div class="bg-white p-6 rounded-lg shadow space-y-4">
+                    <h3 class="font-semibold text-gray-700 border-b pb-2">Informes Financieros Netos</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                            <p class="text-xs text-blue-600 font-bold uppercase">Hoy</p>
+                            <p class="text-base font-bold text-blue-950 mt-1">Ingresos: <span id="caja-ventas-hoy">$0</span></p>
+                            <p class="text-xs text-amber-600 font-medium">Pagos: <span id="caja-gastos-hoy">$0</span></p>
+                            <p class="text-xs text-emerald-700 font-bold mt-1 border-t pt-1">Balance: <span id="caja-neto-hoy">$0</span></p>
+                        </div>
+                        <div class="bg-sky-50 p-4 rounded-lg border border-sky-100">
+                            <p class="text-xs text-sky-700 font-bold uppercase">Últimos 7 Días</p>
+                            <p class="text-base font-bold text-sky-950 mt-1">Ingresos: <span id="caja-ventas-semana">$0</span></p>
+                            <p class="text-xs text-amber-600 font-medium">Pagos: <span id="caja-gastos-semana">$0</span></p>
+                            <p class="text-xs text-emerald-700 font-bold mt-1 border-t pt-1">Balance: <span id="caja-neto-semana">$0</span></p>
+                        </div>
+                        <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+                            <p class="text-xs text-emerald-700 font-bold uppercase">Mes Actual</p>
+                            <p class="text-base font-bold text-emerald-950 mt-1">Ingresos: <span id="caja-ventas-mes">$0</span></p>
+                            <p class="text-xs text-amber-600 font-medium">Pagos: <span id="caja-gastos-mes">$0</span></p>
+                            <p class="text-xs text-emerald-700 font-bold mt-1 border-t pt-1">Balance: <span id="caja-neto-mes">$0</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="bg-white p-6 rounded-lg shadow space-y-4">
+                    <div class="flex justify-between items-center border-b pb-3 flex-wrap gap-3">
+                        <h3 class="font-semibold text-gray-700">Historial de Movimientos y Pagos</h3>
+                        
+                        <div class="flex items-center space-x-2 flex-wrap gap-2 text-xs">
+                            <select id="filtro-tipo" onchange="renderizarTodo()" class="p-1.5 border rounded bg-gray-50 font-medium">
+                                <option value="todos">🔍 Todos</option>
+                                <option value="ingresos">🟢 Ingresos</option>
+                                <option value="egresos">🟠 Egresos</option>
+                            </select>
+                            
+                            <div class="flex items-center space-x-1">
+                                <span class="text-gray-500">Desde:</span>
+                                <input type="date" id="filtro-fecha-desde" onchange="renderizarTodo()" class="p-1.5 border rounded bg-gray-50">
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <span class="text-gray-500">Hasta:</span>
+                                <input type="date" id="filtro-fecha-hasta" onchange="renderizarTodo()" class="p-1.5 border rounded bg-gray-50">
+                            </div>
+
+                            <button onclick="limpiarFiltros()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2.5 py-1.5 rounded transition">Limpiar</button>
+                            
+                            <button onclick="exportarPDFFiltrado()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded transition font-bold flex items-center gap-1">
+                                📄 Descargar PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-[350px]">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-600">
+                                    <th class="p-2">Fecha y Hora</th>
+                                    <th class="p-2">Tipo</th>
+                                    <th class="p-2">Concepto / Detalle</th>
+                                    <th class="p-2">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-historial">
+                                <!-- Se llena dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+          
+            <div class="space-y-6">
+                
+                <div id="panel-inventario" class="bg-white p-5 rounded-lg shadow border-2 border-blue-100 hidden">
+                    <h2 class="text-base font-semibold mb-3 text-blue-700 border-b pb-2">Agregar Producto a Inventario</h2>
+                    <form id="form-producto" class="space-y-3 text-sm">
+                        <div>
+                            <label class="block font-medium text-gray-600">Nombre del Producto</label>
+                            <input type="text" id="prod-nombre" placeholder="Ej. Lápiz Mirado" required class="w-full mt-1 p-2 border rounded">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block font-medium text-gray-600">Marca (Op.)</label>
+                                <input type="text" id="prod-marca" placeholder="Ej. Faber" class="w-full mt-1 p-2 border rounded">
+                            </div>
+                            <div>
+                                <label class="block font-medium text-gray-600">Color (Op.)</label>
+                                <input type="text" id="prod-color" placeholder="Ej. Negro" class="w-full mt-1 p-2 border rounded">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block font-medium text-gray-600">Costo Unit.</label>
+                                <input type="number" step="any" id="prod-costo" required class="w-full mt-1 p-2 border rounded">
+                            </div>
+                            <div>
+                                <label class="block font-medium text-gray-600">Precio Venta</label>
+                                <input type="number" step="any" id="prod-precio" required class="w-full mt-1 p-2 border rounded">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-medium text-gray-600">Stock Inicial</label>
+                            <input type="number" id="prod-stock" required class="w-full mt-1 p-2 border rounded">
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded font-medium transition">Guardar Producto</button>
+                    </form>
+                </div>
+
+                <div class="bg-white p-5 rounded-lg shadow">
+                    <h2 class="text-base font-semibold mb-3 text-gray-700 border-b pb-2">Inventario en Stock</h2>
+                    <div class="overflow-x-auto max-h-[300px]">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-600">
+                                    <th class="p-2">Producto / Detalle</th>
+                                    <th class="p-2">Stock</th>
+                                    <th class="p-2">Precio</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-inventario">
+                            
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-lg shadow space-y-4">
+                    <h2 class="text-base font-semibold text-gray-700 border-b pb-2">📊 Resumen Visual y Métricas</h2>
+                    
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="font-medium text-gray-600">Total Productos en Stock:</span>
+                                <span id="stat-total-items" class="font-bold text-blue-700">0</span>
+                            </div>
+                            <div class="flex justify-between mb-1">
+                                <span class="font-medium text-gray-600">Artículos con stock bajo (&le;3):</span>
+                                <span id="stat-stock-bajo" class="font-bold text-red-600">0</span>
+                            </div>
+                            <div class="flex justify-between mb-1">
+                                <span class="font-medium text-gray-600">Movimientos Registrados (Total):</span>
+                                <span id="stat-total-mov" class="font-bold text-gray-800">0</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t">
+                            <p class="font-semibold text-gray-700 mb-2">Tendencia de Ingresos (Últimos Días)</p>
+                            <div id="mini-grafica-barras" class="h-28 flex items-end gap-2 bg-gray-50 p-2 rounded-lg border border-dashed border-gray-200">
+   
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <footer class="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-900 text-white py-6 px-6 mt-auto shadow-inner">
+            <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 text-xs md:text-sm">
+                <div>
+                    <p class="font-medium">&copy; 2026 HR. Todos los derechos reservados.</p>
+                </div>
+                <div class="flex items-center space-x-6">
+               
+                    <a href="https://aynigroup.com.co/" target="_blank" class="text-blue-100 hover:text-white underline transition">Visitar Plataforma</a>
+                    <span class="text-blue-200">📞 Tel: +57 3123512172</span>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
