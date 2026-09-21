@@ -1,22 +1,47 @@
-// --- CREDENCIALES DE ACCESO FIJAS ---
-const CREDENCIALES_PERMITIDAS = {
+// --- CREDENCIALES DE ACCESO SEGURAS (CIFRADAS CON HASH SHA-256) ---
+const CREDENCIALES_FIJAS = {
     usuario: "AnaR",
-    clave: "MailyR"
+    // Este hash corresponde a la clave: admin2026
+    claveHash: "ead1289eab0318263c628e07d050bfda190c3eae24c6dd1681cc21e9d7bc9247" 
 };
 
-// URL de tu API en SheetDB
-const URL_SHEETDB = "https://sheetdb.io/api/v1/93df8h7sv2a4c";
+// Función nativa para cifrar la contraseña escrita al vuelo
+async function cifrarPassword(texto) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(texto);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// --- CONFIGURACIÓN DE FIREBASE ---
+const firebaseConfig = {
+    apiKey: "AIzaSyCD74JKNtnjjU9UY145HQFGoYFPLcPxm-g",
+    authDomain: "dayanyalen-718ba.firebaseapp.com",
+    projectId: "dayanyalen-718ba",
+    storageBucket: "dayanyalen-718ba.firebasestorage.app",
+    messagingSenderId: "309452437233",
+    appId: "1:309452437233:web:789c372222955c2a021b50",
+    measurementId: "G-T42M5PFCTC"
+};
+
+// Inicializar Firebase Firestore
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 let inventario = [];
 let ventas = [];
 let gastos = [];
-let carrito = []; // Carrito híbrido (inventario + libre)
+let carrito = []; 
 let sesionActiva = localStorage.getItem('sesionActiva') === 'true';
 
 // Variables para Paginación de Inventario y Consecutivo de Facturas
 let paginaActualInventario = 1;
 const itemsPorPaginaInventario = 8;
 let contadorFacturas = parseInt(localStorage.getItem('contadorFacturas') || '0');
+
+// Variable temporal para el modal de reabastecimiento
+let idProductoEnEspera = null;
 
 const pantallaLogin = document.getElementById('pantalla-login');
 const appPrincipal = document.getElementById('app-principal');
@@ -29,12 +54,15 @@ if (sesionActiva) {
     cargarDatosDesdeNube();
 }
 
-formLogin.addEventListener('submit', (e) => {
+formLogin.addEventListener('submit', async (e) => {
     e.preventDefault();
     const user = document.getElementById('login-usuario').value.trim();
     const pass = document.getElementById('login-clave').value.trim();
 
-    if (user === CREDENCIALES_PERMITIDAS.usuario && pass === CREDENCIALES_PERMITIDAS.clave) {
+    // Ciframos la contraseña ingresada para compararla con el Hash seguro
+    const passIngresadaHash = await cifrarPassword(pass);
+
+    if (user === CREDENCIALES_FIJAS.usuario && passIngresadaHash === CREDENCIALES_FIJAS.claveHash) {
         localStorage.setItem('sesionActiva', 'true');
         pantallaLogin.classList.add('hidden');
         appPrincipal.classList.remove('hidden');
@@ -254,31 +282,25 @@ async function procesarVentaCarrito(generarPDF = false) {
     renderizarTodo();
 }
 
-// --- GENERADOR DE FACTURA PROFESIONAL EN PDF (CONSECUTIVO ORDENADO) ---
-// --- GENERADOR DE FACTURA PROFESIONAL EN PDF (CON LOGO Y CONSECUTIVO ORDENADO) ---
-// --- GENERADOR DE FACTURA PROFESIONAL EN PDF (CON LOGO LOCAL Y CONSECUTIVO ORDENADO) ---
+// --- GENERADOR DE FACTURA PROFESIONAL EN PDF (CON LOGO LOCAL) ---
 function generarFacturaPDF(venta) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // Creamos un elemento de imagen en memoria para leer el archivo de la carpeta local
     const img = new Image();
-    img.src = "favicon.jpg"; // ⚠️ CAMBIA "logo.jpg" por el nombre exacto de tu imagen en la carpeta (ej. logo.png)
+    img.src = "favicon.jpg"; 
 
     try {
-        // Intenta dibujar el logo local en la factura (X: 14, Y: 12, Ancho: 18, Alto: 18)
         doc.addImage(img, "JPEG", 14, 12, 18, 18);
     } catch (e) {
-        console.log("No se pudo cargar el logo local, continuando sin imagen.");
+        console.log("No se pudo cargar el logo, continuando sin imagen.");
     }
 
-    // 💡 DATOS DE TU LOCAL
-    const nombreLocal = "Dayanyalen";
+    const nombreLocal = "PAPELERÍA & VARIEDADES";
     const nitLocal = "NIT: 900.123.456-1";
     const telLocal = "Tel: 300 123 4567";
     const direccionLocal = "Calle Principal # 10-20, Local 1";
 
-    // Textos del Encabezado
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
     doc.text(nombreLocal, 36, 17);
@@ -289,7 +311,6 @@ function generarFacturaPDF(venta) {
     doc.text(telLocal, 36, 26);
     doc.text(direccionLocal, 36, 30);
 
-    // Cuadro de Factura a la Derecha
     doc.setDrawColor(37, 99, 235);
     doc.roundedRect(130, 12, 70, 24, 2, 2);
     doc.setFont("helvetica", "bold");
@@ -300,7 +321,6 @@ function generarFacturaPDF(venta) {
     doc.text(`No. ${venta.nroFactura}`, 135, 26);
     doc.text(`Fecha: ${new Date(venta.fecha).toLocaleString()}`, 135, 32);
 
-    // Datos del Cliente
     doc.setFillColor(240, 243, 250);
     doc.roundedRect(14, 40, 186, 18, 2, 2, "F");
     doc.setFont("helvetica", "bold");
@@ -309,7 +329,6 @@ function generarFacturaPDF(venta) {
     doc.text(`Cliente: ${venta.cliente}`, 17, 54);
     doc.text(`Cédula/NIT: ${venta.nitCliente}`, 120, 54);
 
-    // Tabla de Productos / Ítems
     let y = 65;
     doc.setFillColor(37, 99, 235);
     doc.rect(14, y, 186, 8, "F");
@@ -336,7 +355,6 @@ function generarFacturaPDF(venta) {
         });
     }
 
-    // Total a Pagar
     y += 5;
     doc.setDrawColor(200, 200, 200);
     doc.line(130, y, 200, y);
@@ -345,7 +363,6 @@ function generarFacturaPDF(venta) {
     doc.text("TOTAL A PAGAR:", 130, y);
     doc.text(`$${venta.totalVenta.toLocaleString()}`, 170, y);
 
-    // Firmas
     y += 25;
     if (y > 250) { doc.addPage(); y = 40; }
     doc.line(25, y, 90, y);
@@ -353,88 +370,106 @@ function generarFacturaPDF(venta) {
     doc.setFontSize(8);
     doc.text("Firma Autorizada / Sello", 42, y + 5);
 
-    // Pie de página
+    doc.line(120, y, 185, y);
+    doc.text("Firma de Recibido Conforme", 135, y + 5);
+
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
-    doc.text("¡Gracias por su compra! Conserve esta factura.", 105, 285, { align: "center" });
+    doc.text("¡Gracias por su compra! Conserve esta factura para cualquier cambio o garantía.", 105, 285, { align: "center" });
 
     doc.save(`Factura_${venta.nroFactura}.pdf`);
 }
 
-// --- SINCRONIZACIÓN NUBE (SHEETDB) ---
+// --- SINCRONIZACIÓN CON FIREBASE ---
 
 async function cargarDatosDesdeNube() {
     try {
-        let resInv = await fetch(`${URL_SHEETDB}?sheet=inventario`);
-        inventario = await resInv.json();
-        inventario = inventario.map(item => ({ ...item, id: Number(item.id), costo: Number(item.costo), precio: Number(item.precio), stock: Number(item.stock) }));
+        const snapshotInv = await db.collection("inventario").get();
+        inventario = [];
+        snapshotInv.forEach(doc => {
+            inventario.push({ idDoc: doc.id, ...doc.data() });
+        });
 
-        let resVentas = await fetch(`${URL_SHEETDB}?sheet=ventas`);
-        ventas = await resVentas.json();
-        ventas = ventas.map(item => ({ ...item, id: Number(item.id), totalVenta: Number(item.totalVenta), ganancia: Number(item.ganancia || 0) }));
+        const snapshotVentas = await db.collection("ventas").get();
+        ventas = [];
+        snapshotVentas.forEach(doc => {
+            ventas.push({ idDoc: doc.id, ...doc.data() });
+        });
 
-        let resGastos = await fetch(`${URL_SHEETDB}?sheet=gastos`);
-        gastos = await resGastos.json();
-        gastos = gastos.map(item => ({ 
-            ...item, 
-            id: Number(item.id), 
-            monto: Number(item.monto || item.valor || 0) 
-        }));
+        const snapshotGastos = await db.collection("gastos").get();
+        gastos = [];
+        snapshotGastos.forEach(doc => {
+            gastos.push({ idDoc: doc.id, ...doc.data() });
+        });
 
         renderizarTodo();
     } catch (error) {
-        console.error("Error al cargar datos de la nube:", error);
+        console.error("Error al cargar datos de Firebase:", error);
+        mostrarNotificacion("Error al conectar con la base de datos", "error");
     }
 }
 
-async function guardarEnNube(pestana, objetoDatos) {
+async function guardarEnNube(coleccion, objetoDatos) {
     try {
-        await fetch(`${URL_SHEETDB}?sheet=${pestana}`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ data: [objetoDatos] })
-        });
+        await db.collection(coleccion).doc(String(objetoDatos.id)).set(objetoDatos);
     } catch (error) {
-        console.error("Error al guardar en la nube:", error);
+        console.error("Error al guardar en Firebase:", error);
     }
 }
 
 async function actualizarStockEnNube(idProducto, nuevoStock) {
     try {
-        await fetch(`${URL_SHEETDB}/id/${idProducto}?sheet=inventario`, {
-            method: 'PATCH',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ data: { stock: nuevoStock } })
+        const querySnapshot = await db.collection("inventario").where("id", "==", idProducto).get();
+        querySnapshot.forEach(async (documento) => {
+            await db.collection("inventario").doc(documento.id).update({
+                stock: nuevoStock
+            });
         });
     } catch (error) {
-        console.error("Error al actualizar stock en la nube:", error);
+        console.error("Error al actualizar stock en Firebase:", error);
     }
 }
 
-// --- REABASTECIMIENTO DE STOCK ---
+// --- REABASTECIMIENTO DE STOCK MODERNO (MODAL PERSONALIZADO) ---
 
-async function reabastecerStock(idProducto) {
+function reabastecerStock(idProducto) {
     const producto = inventario.find(p => p.id === idProducto);
     if (!producto) return;
 
-    const cantidadStr = prompt(`📦 Reabastecer: "${producto.nombre}"\nStock actual: ${producto.stock}\n\nIngresa la cantidad que te llegó del nuevo pedido:`, "10");
-    if (cantidadStr === null) return;
+    idProductoEnEspera = producto.id;
+    document.getElementById('modal-reabastecer-nombre').textContent = producto.nombre;
+    document.getElementById('modal-reabastecer-actual').textContent = producto.stock;
+    document.getElementById('modal-reabastecer-input').value = 10;
 
+    const modal = document.getElementById('modal-reabastecer');
+    modal.classList.remove('hidden');
+}
+
+function cerrarModalReabastecer() {
+    const modal = document.getElementById('modal-reabastecer');
+    modal.classList.add('hidden');
+    idProductoEnEspera = null;
+}
+
+async function confirmarReabastecimiento() {
+    if (!idProductoEnEspera) return;
+
+    const cantidadStr = document.getElementById('modal-reabastecer-input').value;
     const cantidadAdicional = parseInt(cantidadStr);
+
     if (isNaN(cantidadAdicional) || cantidadAdicional <= 0) {
         return mostrarNotificacion('Ingresa una cantidad válida.', 'error');
     }
 
-    producto.stock += cantidadAdicional;
-    await actualizarStockEnNube(producto.id, producto.stock);
-    renderizarTodo();
-    mostrarNotificacion(`¡Stock actualizado! Nuevo total: ${producto.stock}`);
+    const producto = inventario.find(p => p.id === idProductoEnEspera);
+    if (producto) {
+        producto.stock += cantidadAdicional;
+        await actualizarStockEnNube(producto.id, producto.stock);
+        renderizarTodo();
+        mostrarNotificacion(`¡Stock actualizado! Nuevo total: ${producto.stock}`);
+    }
+
+    cerrarModalReabastecer();
 }
 
 // --- ACCIONES ---
@@ -468,7 +503,7 @@ formGasto.addEventListener('submit', async (e) => {
     const descripcion = document.getElementById('gasto-descripcion').value.trim();
     const monto = parseFloat(document.getElementById('gasto-monto').value);
 
-    if (!monto || monto <= 0) return mostrarNotificacion('Ingresa un monto válido.', 'error');
+    if (!monto || monto <= 0) return mostrarNotificacion('Monto inválido.', 'error');
 
     const nuevoGasto = {
         id: Date.now(),
@@ -685,7 +720,7 @@ function actualizarAlertasBot() {
                 <span class="text-base">✅</span>
                 <div>
                     <p class="font-bold">¡Todo en orden!</p>
-                    <p class="text-[11px] text-emerald-700">No hay productos agotados ni con stock crítico en este momento.</p>
+                    <p class="text-[11px] text-emerald-700">No hay productos agotados ni con stock crítico.</p>
                 </div>
             </div>
         `;
