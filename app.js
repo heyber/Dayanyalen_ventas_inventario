@@ -1,7 +1,7 @@
 // --- CREDENCIALES DE ACCESO SEGURAS (CIFRADAS CON HASH SHA-256) ---
 const CREDENCIALES_FIJAS = {
     usuario: "AnaR",
-    // Este hash corresponde a la clave: admin2026
+   
     claveHash: "ead1289eab0318263c628e07d050bfda190c3eae24c6dd1681cc21e9d7bc9247" 
 };
 
