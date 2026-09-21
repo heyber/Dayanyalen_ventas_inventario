@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dayanyalen ventas e inventarios</title>
+    <title>Dayanyalen ventas e invenario</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.jpg">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+    <!-- Librería jsPDF para exportar a PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link rel="icon" type="image/png" href="favicon.jpg">
 </head>
 <body class="bg-gray-100 font-sans leading-normal tracking-normal flex flex-col min-h-screen">
 
-   
+    <!-- 1. MODAL / PANTALLA DE LOGIN -->
     <div id="pantalla-login" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
         <div class="bg-white p-8 rounded-lg shadow-xl w-96">
             <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">Acceso al Sistema</h2>
@@ -32,10 +33,10 @@
         </div>
     </div>
 
-   
+    <!-- 2. APLICACIÓN PRINCIPAL -->
     <div id="app-principal" class="hidden flex flex-col min-h-screen">
         
-        <!-- Banner Superior (Navbar Azul Uniforme) -->
+        <!-- Banner Superior -->
         <header class="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-900 text-white shadow-lg py-5 px-6">
             <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
@@ -51,7 +52,7 @@
 
         <div class="container mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow mt-2">
             
-            
+            <!-- COLUMNA PRINCIPAL: POS y Historial -->
             <div class="lg:col-span-2 space-y-6">
                 
                 <!-- Pestañas de Venta y Pagos -->
@@ -67,7 +68,7 @@
                         </button>
                     </div>
 
-                    
+                    <!-- FORMULARIO 1: PRODUCTOS -->
                     <form id="form-venta-producto" class="space-y-4">
                         <div class="flex justify-between items-center">
                             <label class="block text-sm font-medium text-gray-700">Buscar Producto en Inventario</label>
@@ -80,7 +81,7 @@
                         <div id="seccion-busqueda-inventario">
                             <input type="text" id="input-buscador-prod" list="lista-productos-sugeridos" placeholder="Escribe para buscar producto (ej. Lápiz, Cuaderno)..." required class="w-full mt-1 p-3 border rounded-lg focus:ring focus:ring-blue-200 text-base">
                             <datalist id="lista-productos-sugeridos">
-                              
+                                <!-- Se llena dinámicamente -->
                             </datalist>
                             <input type="hidden" id="venta-producto-id">
                         </div>
@@ -107,7 +108,7 @@
                         </div>
                     </form>
 
-                
+                    <!-- FORMULARIO 2: SERVICIOS -->
                     <form id="form-venta-servicio" class="space-y-4 hidden">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Tipo de Servicio</label>
@@ -143,7 +144,7 @@
                         </div>
                     </form>
 
-                   
+                    <!-- FORMULARIO 3: GASTOS / PAGOS -->
                     <form id="form-gasto" class="space-y-4 hidden">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Descripción del Gasto o Pago</label>
@@ -161,32 +162,32 @@
                     </form>
                 </div>
 
-            
+                <!-- Resumen de Informes -->
                 <div class="bg-white p-6 rounded-lg shadow space-y-4">
                     <h3 class="font-semibold text-gray-700 border-b pb-2">Informes Financieros Netos</h3>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                         <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
                             <p class="text-xs text-blue-600 font-bold uppercase">Hoy</p>
-                            <p class="text-base font-bold text-blue-950 mt-1">Ingresos: <span id="caja-ventas-hoy">$0</span></p>
-                            <p class="text-xs text-amber-600 font-medium">Pagos: <span id="caja-gastos-hoy">$0</span></p>
-                            <p class="text-xs text-emerald-700 font-bold mt-1 border-t pt-1">Balance: <span id="caja-neto-hoy">$0</span></p>
+                            <p class="text-base font-bold text-blue-950 mt-1">Ventas Brutas: <span id="caja-ventas-hoy">$0</span></p>
+                            <p class="text-xs text-amber-600 font-medium">Pagos/Egresos: <span id="caja-gastos-hoy">$0</span></p>
+                            <p class="text-xs text-emerald-700 font-bold mt-1 border-t pt-1">Utilidad Neta: <span id="caja-neto-hoy">$0</span></p>
                         </div>
                         <div class="bg-sky-50 p-4 rounded-lg border border-sky-100">
                             <p class="text-xs text-sky-700 font-bold uppercase">Últimos 7 Días</p>
-                            <p class="text-base font-bold text-sky-950 mt-1">Ingresos: <span id="caja-ventas-semana">$0</span></p>
-                            <p class="text-xs text-amber-600 font-medium">Pagos: <span id="caja-gastos-semana">$0</span></p>
-                            <p class="text-xs text-emerald-700 font-bold mt-1 border-t pt-1">Balance: <span id="caja-neto-semana">$0</span></p>
+                            <p class="text-base font-bold text-sky-950 mt-1">Ventas Brutas: <span id="caja-ventas-semana">$0</span></p>
+                            <p class="text-xs text-amber-600 font-medium">Pagos/Egresos: <span id="caja-gastos-semana">$0</span></p>
+                            <p class="text-xs text-emerald-700 font-bold mt-1 border-t pt-1">Utilidad Neta: <span id="caja-neto-semana">$0</span></p>
                         </div>
                         <div class="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
                             <p class="text-xs text-emerald-700 font-bold uppercase">Mes Actual</p>
-                            <p class="text-base font-bold text-emerald-950 mt-1">Ingresos: <span id="caja-ventas-mes">$0</span></p>
-                            <p class="text-xs text-amber-600 font-medium">Pagos: <span id="caja-gastos-mes">$0</span></p>
-                            <p class="text-xs text-emerald-700 font-bold mt-1 border-t pt-1">Balance: <span id="caja-neto-mes">$0</span></p>
+                            <p class="text-base font-bold text-emerald-950 mt-1">Ventas Brutas: <span id="caja-ventas-mes">$0</span></p>
+                            <p class="text-xs text-amber-600 font-medium">Pagos/Egresos: <span id="caja-gastos-mes">$0</span></p>
+                            <p class="text-xs text-emerald-700 font-bold mt-1 border-t pt-1">Utilidad Neta: <span id="caja-neto-mes">$0</span></p>
                         </div>
                     </div>
                 </div>
 
-                
+                <!-- Historial con Filtros Avanzados y Exportar a PDF -->
                 <div class="bg-white p-6 rounded-lg shadow space-y-4">
                     <div class="flex justify-between items-center border-b pb-3 flex-wrap gap-3">
                         <h3 class="font-semibold text-gray-700">Historial de Movimientos y Pagos</h3>
@@ -222,7 +223,8 @@
                                     <th class="p-2">Fecha y Hora</th>
                                     <th class="p-2">Tipo</th>
                                     <th class="p-2">Concepto / Detalle</th>
-                                    <th class="p-2">Valor</th>
+                                    <th class="p-2">Valor Venta / Gasto</th>
+                                    <th class="p-2">Ganancia Real</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-historial">
@@ -234,7 +236,7 @@
 
             </div>
 
-          
+            <!-- COLUMNA DERECHA: Inventario + Estadísticas -->
             <div class="space-y-6">
                 
                 <div id="panel-inventario" class="bg-white p-5 rounded-lg shadow border-2 border-blue-100 hidden">
@@ -284,7 +286,7 @@
                                 </tr>
                             </thead>
                             <tbody id="tabla-inventario">
-                            
+                                <!-- Se llena dinámicamente -->
                             </tbody>
                         </table>
                     </div>
@@ -312,7 +314,7 @@
                         <div class="pt-2 border-t">
                             <p class="font-semibold text-gray-700 mb-2">Tendencia de Ingresos (Últimos Días)</p>
                             <div id="mini-grafica-barras" class="h-28 flex items-end gap-2 bg-gray-50 p-2 rounded-lg border border-dashed border-gray-200">
-   
+                                <!-- Se llena con barras dinámicamente -->
                             </div>
                         </div>
                     </div>
@@ -322,15 +324,15 @@
 
         </div>
 
+        <!-- 3. FOOTER PERSONALIZADO -->
         <footer class="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-900 text-white py-6 px-6 mt-auto shadow-inner">
             <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 text-xs md:text-sm">
                 <div>
                     <p class="font-medium">&copy; 2026 HR. Todos los derechos reservados.</p>
                 </div>
                 <div class="flex items-center space-x-6">
-               
                     <a href="https://aynigroup.com.co/" target="_blank" class="text-blue-100 hover:text-white underline transition">Visitar Plataforma</a>
-                    <span class="text-blue-200">📞 Tel: +57 3123512172</span>
+                    <span class="text-blue-200">📞 Tel: +57 3123512127</span>
                 </div>
             </div>
         </footer>

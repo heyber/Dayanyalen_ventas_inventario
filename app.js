@@ -1,7 +1,7 @@
 // --- CREDENCIALES DE ACCESO FIJAS ---
 const CREDENCIALES_PERMITIDAS = {
-    usuario: "AnaRo",
-    clave: "Anatilde"
+    usuario: "papeleria123",
+    clave: "admin2026"
 };
 
 // URL de tu API en SheetDB
@@ -156,7 +156,7 @@ function limpiarFiltros() {
     renderizarTodo();
 }
 
-// --- SINCRONIZACIÓN NUBE (SHEETDB) TOTAL ---
+// --- SINCRONIZACIÓN NUBE (SHEETDB) ---
 
 async function cargarDatosDesdeNube() {
     try {
@@ -166,7 +166,7 @@ async function cargarDatosDesdeNube() {
 
         let resVentas = await fetch(`${URL_SHEETDB}?sheet=ventas`);
         ventas = await resVentas.json();
-        ventas = ventas.map(item => ({ ...item, id: Number(item.id), totalVenta: Number(item.totalVenta), ganancia: Number(item.ganancia) }));
+        ventas = ventas.map(item => ({ ...item, id: Number(item.id), totalVenta: Number(item.totalVenta), ganancia: Number(item.ganancia || 0) }));
 
         let resGastos = await fetch(`${URL_SHEETDB}?sheet=gastos`);
         gastos = await resGastos.json();
@@ -254,7 +254,7 @@ formVentaProducto.addEventListener('submit', async (e) => {
             tipo: 'venta_producto',
             concepto: `[Venta Libre] ${nombreLibre}`,
             totalVenta: precioTotalLibre,
-            ganancia: precioTotalLibre
+            ganancia: precioTotalLibre // En venta libre sin costo registrado, la ganancia es el total
         };
 
         ventas.push(nuevaVenta);
@@ -279,7 +279,7 @@ formVentaProducto.addEventListener('submit', async (e) => {
         producto.stock -= cantidad;
         const totalVenta = producto.precio * cantidad;
         const costoTotal = producto.costo * cantidad;
-        const ganancia = totalVenta - costoTotal;
+        const ganancia = totalVenta - costoTotal; // Cálculo exacto de ganancia para inventario
 
         const nuevaVenta = {
             id: Date.now(),
@@ -297,7 +297,7 @@ formVentaProducto.addEventListener('submit', async (e) => {
         formVentaProducto.reset();
         document.getElementById('venta-cantidad').value = 1;
         renderizarTodo();
-        mostrarNotificacion('¡Venta registrada con éxito!');
+        mostrarNotificacion(`¡Venta registrada! Ganancia: $${ganancia.toLocaleString()}`);
     }
 });
 
@@ -341,7 +341,7 @@ formVentaServicio.addEventListener('submit', async (e) => {
     document.getElementById('seccion-servicio-libre').classList.add('hidden');
     document.getElementById('seccion-servicio-fijo').classList.remove('hidden');
     renderizarTodo();
-    mostrarNotificacion('¡Servicio registrado con éxito!');
+    mostrarNotificacion(`¡Servicio registrado! Ganancia: $${ganancia.toLocaleString()}`);
 });
 
 formGasto.addEventListener('submit', async (e) => {
@@ -369,12 +369,13 @@ formGasto.addEventListener('submit', async (e) => {
 // --- OBTENER MOVIMIENTOS FILTRADOS ---
 function obtenerMovimientosFiltrados() {
     let movimientos = [
-        ...ventas.map(v => ({ ...v, esGasto: false })),
+        ...ventas.map(v => ({ ...v, esGasto: false, gananciaReal: Number(v.ganancia || 0) })),
         ...gastos.map(g => ({ 
             id: g.id,
             fecha: g.fecha,
             esGasto: true, 
             totalVenta: Number(g.monto || g.valor || 0), 
+            gananciaReal: -Number(g.monto || g.valor || 0), // El gasto resta a la utilidad neta
             concepto: `Egreso/Pago: ${g.descripcion || 'Sin descripción'}`, 
             tipo: 'gasto' 
         }))
@@ -416,14 +417,15 @@ function exportarPDFFiltrado() {
     doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 28);
 
     let y = 38;
-    doc.setFillColor(37, 99, 235); // Azul moderno
+    doc.setFillColor(37, 99, 235);
     doc.rect(14, y, 182, 8, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.text("Fecha y Hora", 16, y + 6);
-    doc.text("Tipo", 65, y + 6);
-    doc.text("Concepto", 95, y + 6);
-    doc.text("Valor", 165, y + 6);
+    doc.text("Tipo", 60, y + 6);
+    doc.text("Concepto", 90, y + 6);
+    doc.text("Valor", 145, y + 6);
+    doc.text("Ganancia", 175, y + 6);
 
     y += 12;
     doc.setFont("helvetica", "normal");
@@ -440,11 +442,13 @@ function exportarPDFFiltrado() {
         let tipoTexto = m.esGasto ? 'Egreso/Pago' : (m.tipo === 'venta_producto' ? 'Producto' : 'Servicio');
         let signo = m.esGasto ? '-' : '+';
         let valorFormateado = `${signo}$${(m.totalVenta || 0).toLocaleString()}`;
+        let gananciaFormateada = m.esGasto ? '-' : `$${(m.gananciaReal || 0).toLocaleString()}`;
 
         doc.text(fechaFormateada, 16, y);
-        doc.text(tipoTexto, 65, y);
-        doc.text(m.concepto.substring(0, 35), 95, y);
-        doc.text(valorFormateado, 165, y);
+        doc.text(tipoTexto, 60, y);
+        doc.text(m.concepto.substring(0, 25), 90, y);
+        doc.text(valorFormateado, 145, y);
+        doc.text(gananciaFormateada, 175, y);
 
         y += 8;
     });
@@ -496,13 +500,13 @@ function renderizarTodo() {
     let movimientosFiltrados = obtenerMovimientosFiltrados();
     let movimientosTotales = [
         ...ventas.map(v => ({ ...v, esGasto: false })),
-        ...gastos.map(g => ({ ...g, esGasto: true, totalVenta: Number(g.monto || g.valor || 0) }))
+        ...gastos.map(g => ({ ...g, esGasto: true, totalVenta: Number(g.monto || 0) }))
     ];
     document.getElementById('stat-total-mov').textContent = movimientosTotales.length;
 
     tablaHistorial.innerHTML = '';
     if (movimientosFiltrados.length === 0) {
-        tablaHistorial.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">No hay movimientos que coincidan con el filtro.</td></tr>`;
+        tablaHistorial.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">No hay movimientos que coincidan con el filtro.</td></tr>`;
     } else {
         movimientosFiltrados.forEach(m => {
             const fechaObj = new Date(m.fecha);
@@ -510,16 +514,20 @@ function renderizarTodo() {
 
             let badgeTipo = '';
             let colorTexto = '';
+            let textoGanancia = '-';
 
             if (m.tipo === 'venta_producto') {
                 badgeTipo = '<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">Producto</span>';
                 colorTexto = 'text-blue-900 font-semibold';
+                textoGanancia = `<span class="text-emerald-700 font-bold">+$${(m.ganancia || 0).toLocaleString()}</span>`;
             } else if (m.tipo === 'venta_servicio') {
                 badgeTipo = '<span class="bg-sky-100 text-sky-700 px-2 py-0.5 rounded font-bold">Servicio</span>';
                 colorTexto = 'text-sky-900 font-semibold';
+                textoGanancia = `<span class="text-emerald-700 font-bold">+$${(m.ganancia || 0).toLocaleString()}</span>`;
             } else {
                 badgeTipo = '<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Pago/Gasto</span>';
                 colorTexto = 'text-amber-800 font-semibold';
+                textoGanancia = '<span class="text-gray-400">N/A</span>';
             }
 
             tablaHistorial.innerHTML += `
@@ -528,6 +536,7 @@ function renderizarTodo() {
                     <td class="p-2">${badgeTipo}</td>
                     <td class="p-2 text-gray-800">${m.concepto}</td>
                     <td class="p-2 ${colorTexto}">${m.esGasto ? '-' : '+'}${(m.totalVenta || 0).toLocaleString()}</td>
+                    <td class="p-2">${textoGanancia}</td>
                 </tr>
             `;
         });
@@ -541,38 +550,56 @@ function renderizarTodo() {
     const mesActual = ahora.getMonth();
     const anioActual = ahora.getFullYear();
 
-    let ventasHoy = 0, gastosHoy = 0;
-    let ventasSemana = 0, gastosSemana = 0;
-    let ventasMes = 0, gastosMes = 0;
+    let ventasHoy = 0, gananciaHoy = 0, gastosHoy = 0;
+    let ventasSemana = 0, gananciaSemana = 0, gastosSemana = 0;
+    let ventasMes = 0, gananciaMes = 0, gastosMes = 0;
 
     ventas.forEach(v => {
         const f = new Date(v.fecha);
-        if (f.toLocaleDateString() === hoyStr) ventasHoy += v.totalVenta;
-        if (f >= hace7Dias) ventasSemana += v.totalVenta;
-        if (f.getMonth() === mesActual && f.getFullYear() === anioActual) ventasMes += v.totalVenta;
+        const valVenta = Number(v.totalVenta || 0);
+        const valGanancia = Number(v.ganancia || 0);
+
+        if (f.toLocaleDateString() === hoyStr) {
+            ventasHoy += valVenta;
+            gananciaHoy += valGanancia;
+        }
+        if (f >= hace7Dias) {
+            ventasSemana += valVenta;
+            gananciaSemana += valGanancia;
+        }
+        if (f.getMonth() === mesActual && f.getFullYear() === anioActual) {
+            ventasMes += valVenta;
+            gananciaMes += valGanancia;
+        }
     });
 
     gastos.forEach(g => {
         const f = new Date(g.fecha);
         const valorGasto = Number(g.monto || g.valor || 0);
+
         if (f.toLocaleDateString() === hoyStr) gastosHoy += valorGasto;
         if (f >= hace7Dias) gastosSemana += valorGasto;
         if (f.getMonth() === mesActual && f.getFullYear() === anioActual) gastosMes += valorGasto;
     });
 
+    // Utilidad Neta real = Ganancia de ventas menos los gastos o pagos de salida
+    let netoHoy = gananciaHoy - gastosHoy;
+    let netoSemana = gananciaSemana - gastosSemana;
+    let netoMes = gananciaMes - gastosMes;
+
     document.getElementById('caja-ventas-hoy').textContent = `$${ventasHoy.toLocaleString()}`;
     document.getElementById('caja-gastos-hoy').textContent = `$${gastosHoy.toLocaleString()}`;
-    document.getElementById('caja-neto-hoy').textContent = `$${(ventasHoy - gastosHoy).toLocaleString()}`;
+    document.getElementById('caja-neto-hoy').textContent = `$${netoHoy.toLocaleString()}`;
 
     document.getElementById('caja-ventas-semana').textContent = `$${ventasSemana.toLocaleString()}`;
     document.getElementById('caja-gastos-semana').textContent = `$${gastosSemana.toLocaleString()}`;
-    document.getElementById('caja-neto-semana').textContent = `$${(ventasSemana - gastosSemana).toLocaleString()}`;
+    document.getElementById('caja-neto-semana').textContent = `$${netoSemana.toLocaleString()}`;
 
     document.getElementById('caja-ventas-mes').textContent = `$${ventasMes.toLocaleString()}`;
     document.getElementById('caja-gastos-mes').textContent = `$${gastosMes.toLocaleString()}`;
-    document.getElementById('caja-neto-mes').textContent = `$${(ventasMes - gastosMes).toLocaleString()}`;
+    document.getElementById('caja-neto-mes').textContent = `$${netoMes.toLocaleString()}`;
 
-    // Mini Gráfica de Barras
+    // Mini Gráfica de Barras (Muestra tendencia de ventas brutas)
     const contenedorBarras = document.getElementById('mini-grafica-barras');
     contenedorBarras.innerHTML = '';
 
