@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dayanyalen ventas e inventarios</title>
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2910/2910791.png">
+    <title>Sistema de Gestión y Ventas - Papelería</title>
+    <!-- Favicon local -->
+    <link rel="icon" type="image/png" href="favicon.jpg">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Librería jsPDF para exportar a PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Favicon local -->
-<link rel="icon" type="image/png" href="favicon.jpg">
 </head>
 <body class="bg-slate-100 font-sans leading-normal tracking-normal flex flex-col min-h-screen relative">
 
@@ -19,9 +17,9 @@
     <div id="pantalla-login" class="fixed inset-0 bg-slate-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50">
         <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 border border-slate-100">
             <div class="text-center mb-6">
-                <span class="text-4xl">Dayanyalen</span>
-                <h2 class="text-2xl font-black text-slate-800 mt-2">Acceso al Sistema</h2>
-                <p class="text-xs text-slate-400 mt-1">Ingresa las credenciales provistas por el administrador.</p>
+                <span class="text-4xl"></span>
+                <h2 class="text-2xl font-black text-slate-800 mt-2">Dayanyalen</h2>
+                <p class="text-xs text-slate-400 mt-1">Ingresa las credenciales de administrador.</p>
             </div>
             <form id="form-login" class="space-y-4">
                 <div>
@@ -45,6 +43,7 @@
         <header class="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white shadow-xl py-5 px-6">
             <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="flex items-center space-x-3">
+                    <div class="bg-white/10 p-2.5 rounded-2xl backdrop-blur-md border border-white/20 text-xl"></div>
                     <div>
                         <h1 class="text-xl md:text-2xl font-black tracking-tight">Dayanyalen</h1>
                         <p class="text-xs text-blue-200 font-medium">Sistema Integral de Ventas, Inventario y Finanzas</p>
@@ -334,7 +333,7 @@
                                 <span id="stat-total-items" class="font-black text-blue-700">0</span>
                             </div>
                             <div class="flex justify-between mb-1.5">
-                                <span class="font-semibold text-slate-600">Artículos con stock bajo (&le;3):</span>
+                                <span class="font-semibold text-slate-600">Artículos con stock bajo (&le;10):</span>
                                 <span id="stat-stock-bajo" class="font-black text-red-600">0</span>
                             </div>
                             <div class="flex justify-between mb-1.5">
@@ -371,6 +370,27 @@
 
     </div>
 
+    <!-- MODAL PERSONALIZADO PARA REABASTECER STOCK -->
+    <div id="modal-reabastecer" class="fixed inset-0 bg-slate-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-80 border border-slate-100 space-y-4 transform transition-all">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-1.5"><span>📦</span> Reabastecer Stock</h3>
+                <button onclick="cerrarModalReabastecer()" class="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+            </div>
+            <div>
+                <p id="modal-reabastecer-nombre" class="text-xs font-bold text-blue-700 mb-1">Nombre del producto</p>
+                <p class="text-[11px] text-slate-500 mb-3">Stock actual: <span id="modal-reabastecer-actual" class="font-bold text-slate-700">0</span></p>
+                
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Cantidad a Agregar</label>
+                <input type="number" id="modal-reabastecer-input" min="1" value="10" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="cerrarModalReabastecer()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-xs transition">Cancelar</button>
+                <button onclick="confirmarReabastecimiento()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold text-xs transition shadow-md shadow-blue-600/20">Guardar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- BOT ASISTENTE VIRTUAL FLOTANTE -->
     <div id="contenedor-bot-flotante" class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
         <div id="ventana-bot-chat" class="hidden bg-white w-80 rounded-2xl shadow-2xl border border-slate-200 overflow-hidden mb-3 transition-all duration-300 transform scale-95 opacity-0">
@@ -382,7 +402,7 @@
                     </div>
                     <div>
                         <p class="font-bold text-sm leading-tight">Asistente Dayanyalen</p>
-                        <p class="text-[10px] text-blue-100">En línea • Supervisor de Stock</p>
+                        <p class="text-[10px] text-blue-100">En línea • Supervisor de Stock (&le;10)</p>
                     </div>
                 </div>
                 <button onclick="toggleVentanaBot()" class="text-blue-100 hover:text-white font-bold text-base px-1.5 rounded">✕</button>
@@ -392,7 +412,7 @@
                     <div class="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-[10px]">🤖</div>
                     <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-slate-700 space-y-1">
                         <p class="font-bold text-slate-900">¡Hola! Soy tu asistente de inventario.</p>
-                        <p>Monitoreo constantemente tus productos para avisarte qué mercancía necesita reposición.</p>
+                        <p>Te avisaré cuando tus productos bajen de 10 unidades para que pidas nuevos pedidos a tiempo.</p>
                     </div>
                 </div>
                 <div id="bot-alertas-stock-container"></div>
@@ -412,6 +432,10 @@
             </span>
         </button>
     </div>
+
+    <!-- SCRIPTS DE FIREBASE (COMPAT) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <script src="app.js"></script>
 </body>
